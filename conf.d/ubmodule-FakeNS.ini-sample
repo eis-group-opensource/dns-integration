@@ -1,0 +1,24 @@
+#
+# configuration file for fakeNS unbound module
+# format:
+#
+# [set<NN>]
+# domains = comma-separated domains list
+# ns = comma-separated list of NS servers to return for the listed domains
+# ttl = TTL for fake NS records (default 0)
+# ttl_override = <yes|no>, override TTL for forwarded A/CNAME/PTR records (default no)
+# recursion_only = <yes|no>, only force RD flag and forward replies as is (default no)
+#                            note, other params except for domains are ignored when recursion_only=yes
+
+[set01]
+domains = iaah.local, 7.10.in-addr.arpa
+ns = test2-nsproxy02.local., iaah-proxy.local.
+
+# Example:
+#
+# [set99]
+# domains = testA.local, testB.local
+# ns = test-ns.local., test-ns2.local.
+# ttl = 60
+# ttl_override = yes
+# recursion_only = no
