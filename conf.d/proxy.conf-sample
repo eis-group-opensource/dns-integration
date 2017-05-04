@@ -2,12 +2,11 @@ server:
 	local-zone: "10.in-addr.arpa." nodefault
 
 forward-zone:
-        name: "iaah.local."
-        forward-addr: 10.7.63.69
-	forward-addr: 10.7.63.70
+        name: "corevelocity.test.cloud."
+        forward-addr: 10.24.128.2
 
 forward-zone:
-        name: "7.10.in-addr.arpa."
-        forward-addr: 10.7.63.69
-	forward-addr: 10.7.63.70
+        name: "128.24.10.in-addr.arpa."
+        forward-addr: 10.24.128.2
+
 

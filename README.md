@@ -1,12 +1,16 @@
-# NOT READY YET
-# dns-integration
-# DNS intergation script for unbound
-## Quick description
+# Project Title
+
+UNBOUND script for DNS integration between INTRANET and AWS/AZURE/Other clouds
+(DNS proxy which became faked NS authoritative server for remote zones)
+
+## Getting Started - example
 This is DNS integration script / system for DNS integration between private (INTRANET) DNS and AWS/AZURE DNS. 
 
-IT is tested with AWS and few private networks (via IPSEC) but can be used with AZURE as well.
-
-## DNS intergration between private network and AWS/AZURE cloud network.
+This system (script for unbound) is designed to simplify name space integration between 
+AWS/AZURE cloud networks, and corprorative INTRANET network. It can be used in other cases, 
+too (we use it to integrate internal name spaces of some of our customers, connected by normal,
+policy based IPSEC, to our network). 
+Script is created (and tested) for unbound 1.4.20 (default for Centos 7).
 
 Idea is simple. When you create AWS VPC and activate ROUTE53, it allocates AWS DNS resolver on IP address (beginning of VPC + 2). 
 This DNS resolver respond to the requests from this VPC, resolving DNS names in this VPC.
@@ -28,63 +32,108 @@ So, what we do to resolve it:
   test-ns.eisgroup.com A <IP of first NS proxy>
   test-ns.eisgroup.com A <IP of second NS proxy>
 
+
 Script intercept requests, adds RCURSION DESIRED bit into it, and send them to ROUTE53. IT adds 'authoritative' bit into the responses and replace NS records, if any, by our specified test-ns.eisgroup.com.  So, these proxies looks as athitative NS servers for our INTRANET and as local DNS clients for ROUTE53.
 
-Scripts files should be extracted into /etc/unbound/conf.d directory, and extra UNBOUND configuration is required. In case of CentOS7, it includes:
-(This is just an example):
+Without script, our NS servers may sent non recursive requests to the proxy, get in response
+NS records, which can not be used in INTRANET< and end up with SERVFAIL message. With script, 
+it makes all requests recursive (even when they are sent as non recursive), makes all 
+responses authoritative (so it works as kind of proxy for remote authoritative DNS),
+and replace additional NS records by our own desireble NS records (NSes to these DNS proxies).
+as a result, INTRANET DNS system see these proxyes as authoritative servers for remote domains,
+so effectively integrated together cloud DNS (ROUTE53 or similar) and INTRANET DNS.
+
+## Presequisites
+Scripts need unbound 1.4 or later (tested on 1.4.20), with python module support.
+
+Unbound must be dedicated for proxying DNS request from AWS (or other remote / cloud network)
+only. While it can be used as resolver, it is bad idea and better be avoided. 
+
+Unbound must be, first, configured to resolve names from remote network / cloud (by 
+forwarding requests into it for the proper domains). IT is recommended to test it before
+you install script and configure unbound as faked NS server for the domain(s).
+
+You must be able to add NS records for the domains you want to get from remote network/cloud,
+in your own INTRANET DNS.
+
+You must run your own INTRANET DNS system. 
+
+## Installing 
+
+### 1. Install unbound servers
+Install 1 - 2 servers which will work as NS proxy for remote zones. They must have access
+to remote DNS (for example, in case of AWS they must be inside AWS VPC on proper account).
+
+Install unbound.
+
+Before extracting our script, configure unbound to forward proper zones onto remote DNS
+and resolve names, when requested directly. See example of configuration below.
+
+We recommend to do it before extracting script, as it allow to separate errors, cauased by 
+our script, from errors, caused by inproper unbound configuration.
+
+### 2. Extract project files from conf.d folder of this project, into /etc/unbound/conf.d directory. 
+It will include 
+- ubmodule-FakeNS.py - script itself/
+- ubmodule-FakeNS.conf - extra configuration for unbound , to rnable this script.
+- ubmodule-FakeNS.ini-sample - sample ubmodule-FakeNS.ini configuration file
+- proxy.conf-sample - sample file for proxy.conf itself (which describe zone forwardings)
+
+### 3. Edit unbound.conf file and local.d/access.conf file (or merge them all). 
+You must set up these configurations (access-control is required, other commands are recommended)
+Make sure that these options are configured in any of your places (actual place depends of the unbound version):
 ```
 server:
-        verbosity: 1
-        statistics-interval: 0
-        statistics-cumulative: no
-        extended-statistics: yes
-        num-threads: 2
-        interface-automatic: no
-        chroot: ""
-        username: "unbound"
-        directory: "/etc/unbound"
-        log-time-ascii: yes
-        pidfile: "/var/run/unbound/unbound.pid"
-        target-fetch-policy: "0 0 0 0 0"
-        harden-glue: yes
-        harden-dnssec-stripped: yes
-        harden-below-nxdomain: no
-        harden-referral-path: no
-        use-caps-for-id: no
-        unwanted-reply-threshold: 10000000
+        access-control: 0.0.0.0/0 allow_snoop
+        val-permissive-mode: yes
         prefetch: yes
-        prefetch-key: yes
-        rrset-roundrobin: yes
+        minimal-responses: yes
+        cache-min-ttl: 3600
+        prefetch: yes
         minimal-responses: yes
         val-clean-additional: yes
-        val-permissive-mode: no
-        val-log-level: 1
-        include: /etc/unbound/local.d/*.conf
-remote-control:
-        control-enable: yes
-        server-key-file: "/etc/unbound/unbound_server.key"
-        server-cert-file: "/etc/unbound/unbound_server.pem"
-        control-key-file: "/etc/unbound/unbound_control.key"
-        control-cert-file: "/etc/unbound/unbound_control.pem"
-include: /etc/unbound/conf.d/*.conf
 ```
-These lines comes from local configuration in conf.d directory and wil depend of your situation:
-```
-server:
-        target-fetch-policy: "3 3 3 3 3"
-        local-zone: "10.in-addr.arpa" nodefault
-forward-zone:
-        name: "corevelocity.test.cloud"
-        forward-addr: 10.24.128.2
-forward-zone:
-        name: "128.24.10.in-addr.arpa"
-        forward-addr: 10.24.128.2
-```
-These lines come with project files (they are in ubmodule-FakedNS.conf):
 
-```
-server:
-        module-config: "python validator iterator"
-python:
-         python-script: "/etc/unbound/conf.d/ubmodule-FakeNS.py"
-```
+### 4. Copy sample files and configure them.
+You will need to create conf.d/ubmodule-FakeNS.ini file (cppy from sample file and edit).
+It contain list of domains you want to process by this script, list of NS records it should
+return instead of remote NS records (make sure that some of them can be resolved in your 
+INTRANET), and additional flags (for example, you just add recursive flag or cgange TTL 
+in responses).
+
+Create forwarding file - you can use proxy-conf-sample as an example.
+
+
+### 5. Test unbound. It must resolve names in remote DNS zones.
+If you can,. test it by sending non recursive requests. Script will convert
+requests to recursive and will add 'autoritative answer' flag into the answers.
+
+### 6. Delegate zones in your INTRANET.
+
+Now, add NS records into your INTRANET DNS. To do it, you usually create lower level zone
+as your INTRANET zone (for example, you can create test.cloud zone as integrated AD DNS zone),
+and then add NS records into it ( corevelocity NS <name of NS proxy> )
+
+Make sure that NS can be resolved without new NS proxy. 
+Do not use STUB zone (you can experiment, maybe it will work too, but we did not test it).
+
+### 7. Test remote zones.
+Now, you can test, how names from remote zones are resolved in your INTRANET.
+If something wrong, you likely will have SERVFAIL response. Make sure that you restaretd DNS servers or cleared caches before testing.
+
+## Versioning
+
+This is version 1.1 of the script. major numbers will be different for
+different unbound version. No real versioning was used yet.
+
+## Authors
+
+* **Mikhail Koshelev** - *made all conding and debugging* -  m.koshelev@gmail.com 
+* **Alexei Roudnev**   - designed delegation idea and tested it - aprudnev@gmail.com
+* **EIS Group open source group** - open-source@eisgroup.com
+
+
+## License
+
+This project is licensed under the GPL license, and is donated by EIS Group (http://eisgroup.com) to the open source community (as it is based on mostly open source products,
+but contains our code and was carefully tested in different conditions).

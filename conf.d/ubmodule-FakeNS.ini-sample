@@ -11,8 +11,8 @@
 #                            note, other params except for domains are ignored when recursion_only=yes
 
 [set01]
-domains = iaah.local, 7.10.in-addr.arpa
-ns = test2-nsproxy02.local., iaah-proxy.local.
+domains = corevelocity.test.cloud, 128.24.10.in-addr.arpa
+ns = test-nsproxy.eisgroup.com., test-nsproxy.corevelocity.test.cloud.
 
 # Example:
 #
