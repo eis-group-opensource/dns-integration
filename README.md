@@ -147,7 +147,7 @@ It never crashed in 4 different environments.
 I push updated python script.
 
 IN addition, we discovered, that windows client may, in some cases, use NS name from SOA and not from NS records.
-So make sure, that AWS or AZURE zone have correct (resolable by your DNS) NS name in SOA and resolvable
+So make sure, that AWS or AZURE zone have correct (resolvable by your DNS) NS name in SOA and resolvable
 NS recods in zone itself.
 
 (Maybe, no need in proxy for Azure, not well tested yet. Azure DNS can resolve requests coming from outside VNET, while
