@@ -216,7 +216,7 @@ def operate(id, event, qstate, qdata):
                 return True
 
             # don't save result in cache, as stored replies are not handled by python modules
-            invalidateQueryInCache(qstate, qstate.return_msg.qinfo)
+            #-disabled. alex# invalidateQueryInCache(qstate, qstate.return_msg.qinfo)
 
             # pass reply to non-filtered source as is
             if not is_source_filtered(qstate):
