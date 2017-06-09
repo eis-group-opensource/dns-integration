@@ -16,6 +16,7 @@ CONFIG_DEFAULTS = {
     'ttl': '0',
     'ttl_override': 'no',
     'recursion_only': 'no',
+    'invalidate_cache': 'yes'
 }
 
 # NS override configuration (dict)
@@ -25,6 +26,7 @@ ns_map = {
     #   ttl: <int>
     #   ttl_override: <bool>
     #   recursion_only: <bool>
+    #   invalidate_cache: <bool>
     }
 
 from ConfigParser import SafeConfigParser
@@ -50,6 +52,7 @@ def readConfig():
                 ns_map[ domain ]['ttl'] = cfg.getint( section, 'ttl' )
                 ns_map[ domain ]['ttl_override'] = cfg.getboolean( section, 'ttl_override' )
                 ns_map[ domain ]['recursion_only'] = cfg.getboolean( section, 'recursion_only' )
+                ns_map[ domain ]['invalidate_cache'] = cfg.getboolean( section, 'invalidate_cache' )
         log_info("FakeNS module configuration: %s" % ns_map)
         return True
     raise ModuleError("Can't read module configuration")
@@ -199,24 +202,28 @@ def operate(id, event, qstate, qdata):
         node = get_node(qstate.qinfo.qname_str)
         # filter queries requiring special handling
         if node is not None:
-
             # forward reply as is if 'recursion_only' flag is set
             if node['recursion_only']:
                 qstate.ext_state[id] = MODULE_FINISHED
                 return True
 
-            #!NOTE: these cache controls seems to be introduced in 6.0 only
-            qstate.no_cache_lookup = 1
-            qstate.no_cache_store = 1
 
             # skip queries with no return messages
             if qstate.return_msg is None:
                 #log_info("NO RETURN_MSG: str %s type %s" % (qstate.qinfo.qname_str,qstate.qinfo.qtype) )
                 qstate.ext_state[id] = MODULE_FINISHED
                 return True
-
+		
             # don't save result in cache, as stored replies are not handled by python modules
-            #-disabled. alex# invalidateQueryInCache(qstate, qstate.return_msg.qinfo)
+	    # But for NS records only, as NS can be rquested by proxy itself
+            #if ( qstate.qinfo.qtype == RR_TYPE_NS):
+            if node['invalidate_cache']:
+            	invalidateQueryInCache(qstate, qstate.return_msg.qinfo)
+	  
+	    qstate.no_cache_lookup = 1
+	    qstate.no_cache_store = 1
+
+
 
             # pass reply to non-filtered source as is
             if not is_source_filtered(qstate):

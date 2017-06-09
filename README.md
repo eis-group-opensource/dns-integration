@@ -153,3 +153,17 @@ NS recods in zone itself.
 (Maybe, no need in proxy for Azure, not well tested yet. Azure DNS can resolve requests coming from outside VNET, while
 AWS DNS never respond to the requests which originates outside of VPC network. So proxy is mandatory for AWS.)
 
+## UPDATE 2 - invalidate_cache option addedd (default - yes)
+
+There are cases, when we receive correct NSes from forwarded server or when we do not have subdomains.
+It is usually the case for AWS ROUTE53. In such case, we better do not invalidate records in teh cache, as
+it saves a lot of script runs, and scripts may fail under the very heavy load. So, we recommend to try this
+option as 'no' for AWS integration.
+
+On the other case, if other size has subdomains, cache invalidation became essential, as unbound may
+cache NS responses, and when see request next time, may answer with these NS-es without runnig recursion
+next time. We need to invalidate requests in cache in such cases, and it is default. We use it
+when made DNS integration with our customer, via IPSEC connection.
+
+Invalidating cahce more cause script to run more often, and is not recommended in AWS under the heavy traffic.
+

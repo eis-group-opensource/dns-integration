@@ -9,6 +9,12 @@
 # ttl_override = <yes|no>, override TTL for forwarded A/CNAME/PTR records (default no)
 # recursion_only = <yes|no>, only force RD flag and forward replies as is (default no)
 #                            note, other params except for domains are ignored when recursion_only=yes
+# invalidate_cache = yes
+# 	Set this to no for AWS integration, if you do not use subdomains
+# 	Else keep it as default (yes) . Setting it to no may cause SERVFAIL if forwarder 
+#       provides NS records conflicting with our internal NS records. defaulty may cause
+#       script failures under a very heabvy unbound load
+
 
 [set01]
 domains = corevelocity.test.cloud, 128.24.10.in-addr.arpa
@@ -22,3 +28,5 @@ ns = test-nsproxy.eisgroup.com., test-nsproxy.corevelocity.test.cloud.
 # ttl = 60
 # ttl_override = yes
 # recursion_only = no
+# invalidate_cache = yes
+ 
